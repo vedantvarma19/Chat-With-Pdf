@@ -20,6 +20,7 @@
 
 const express = require("express");
 const multer = require("multer");
+const {QdrantClient} = require("@qdrant/js-client-rest");
 const pdfParse = require("pdf-parse");
 const fs = require("fs");
 const { GoogleGenAI } = require("@google/genai");
@@ -69,6 +70,11 @@ async function createEmbedding(text) {
   return response.embeddings[0].values;
 }
 
+const qrant = new QdrantClient({
+    url : process.env.QDRANT_URL,
+    apiKey: process.env.QDRANT_API_KEY,
+})
+
 /**
  * ============================================================================
  * cosineSimilarity()
@@ -113,6 +119,21 @@ app.get("/", (req, res) => {
   res.send("Hey i am vedant");
 });
 
+app.get("/create-collection",async(req,res)=>{
+    try{ 
+      await qrant.createCollection('pdf-docs' , {
+        vectors : { 
+          size :3072,
+          distance:"Cosine",
+        },
+      })
+      res.send("Collection is created Sucessfully");
+    }catch(e){
+      res.status(500).send(e);
+
+    }
+})
+
 /**
  * ============================================================================
  * POST /upload
@@ -156,6 +177,8 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     const pdfData = await pdfParse(dataBuffer);
     const text = pdfData.text;
 
+    fs.unlinkSync(req.file.path);
+    console.log("Uploaded file deleted.");
      /**
          * ---------------------------------------------------------
          * Step 3
@@ -222,6 +245,18 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       });
     }
 
+    const points = chunkEmbeddings.map((item, index)=>({
+      id : index+1,
+      vector : item.embedding,
+      payload : { 
+        text : item.text
+      }
+    }))
+
+    await qrant.upsert("pdf-docs",{
+       points, 
+      });
+
     /**
          * ---------------------------------------------------------
          * Step 5
@@ -230,48 +265,19 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
          */
     const question = req.body.question;
     const questionEmbedding = await createEmbedding(question);
-    /**
-         * ---------------------------------------------------------
-         * Step 6
-         * Similarity Search
-         * ---------------------------------------------------------
-         *
-         * Compare question vector with every chunk vector.
-         *
-         * Highest similarity wins.
-         *
-         */
 
-    let bestChunk = null;
-    let bestScore = -Infinity;
+    const searchResult = await qrant.search('pdf-docs', {
+      vector : questionEmbedding,
+      limit:1
+    });
 
-    for (const items of chunkEmbeddings) {
-      const score = cosineSimilarity(questionEmbedding, items.embedding);
-      if (score > bestScore) {
-        bestChunk = items.text;
-        bestScore = score;
-      }
-    }
+    console.log(searchResult);
 
-    console.log(bestScore);
-    console.log(bestChunk);
-    // const matchedChunk = chunks.find((chunk)=> chunk.toLowerCase().includes('vedant'));
+    const bestChunk = searchResult[0].payload.text;
 
-     /**
-         * ---------------------------------------------------------
-         * Step 7
-         * Ask Gemini using Retrieved Context
-         * ---------------------------------------------------------
-         *
-         * This is Retrieval-Augmented Generation.
-         *
-         * Instead of sending the entire PDF,
-         * only send the relevant chunk.
-         *
-         */
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash-lite",
-      contents: `Asnwer the Question using the context ${bestChunk} and Questions is ${question}`,
+      contents: `Answer the Question using the context ${bestChunk} and Questions is ${question}`,
     });
     
     // returns the answer
