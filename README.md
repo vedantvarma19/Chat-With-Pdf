@@ -1,37 +1,37 @@
 # 📄 Chat With PDF - RAG System
 
-A **Retrieval-Augmented Generation (RAG)** application built with **Node.js**, **Express.js**, and **Google Gemini API** that allows users to upload PDF documents and ask questions about their content using natural language.
-
-Instead of sending the entire PDF to the LLM, the system retrieves only the most relevant sections of the document using **embeddings** and **semantic search**, resulting in more accurate and efficient responses.
+A **Retrieval-Augmented Generation (RAG)** application built with **Node.js**, **Express.js**, **Google Gemini API**, and **Qdrant Vector Database**. Users can upload PDF documents and ask natural language questions. The application extracts text, splits it into overlapping chunks, generates embeddings using Gemini, stores them in Qdrant, performs semantic vector search, and retrieves the most relevant context before generating accurate answers with Gemini.
 
 ---
 
 ## 🚀 Features
 
 - 📂 Upload PDF documents
-- 📖 Extract text from PDFs
-- ✂️ Split text into overlapping chunks
+- 📖 Extract text using `pdf-parse`
+- ✂️ Intelligent text chunking with overlap
 - 🧠 Generate embeddings using Gemini Embedding Model
-- 🔍 Perform semantic search using cosine similarity
-- 🤖 Generate context-aware answers using Gemini
+- 🗄️ Store embeddings in **Qdrant Vector Database**
+- 🔍 Semantic vector search using Qdrant
+- 🤖 Context-aware question answering with Gemini
 - ⚡ Express.js REST API
-- 🏗️ Beginner-friendly implementation of a RAG pipeline
+- 🏗️ Beginner-friendly implementation of a production-style RAG pipeline
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Node.js**
-- **Express.js**
-- **Multer**
-- **pdf-parse**
-- **Google Gemini API**
-- **Gemini Embedding Model**
-- **JavaScript**
+- Node.js
+- Express.js
+- Multer
+- pdf-parse
+- Google Gemini API
+- Gemini Embedding Model
+- Qdrant Vector Database
+- JavaScript
 
 ---
 
-# 📌 Project Workflow
+# 📌 RAG Workflow
 
 ```text
                  User Uploads PDF
@@ -46,27 +46,26 @@ Instead of sending the entire PDF to the LLM, the system retrieves only the most
         Generate Embeddings for Every Chunk
                         │
                         ▼
-           Store Chunk + Embedding in Memory
+      Store Embeddings in Qdrant Vector DB
                         │
-──────────────────────────────────────────────────────
+──────────────────────────────────────────────
 
-                User Asks a Question
+                User Asks Question
                         │
                         ▼
        Generate Question Embedding
                         │
                         ▼
-     Compare with Chunk Embeddings
-     (Cosine Similarity Search)
+      Perform Semantic Search in Qdrant
                         │
                         ▼
       Retrieve Most Relevant Chunk
                         │
                         ▼
-      Send Context + Question to Gemini
+     Send Context + Question to Gemini
                         │
                         ▼
-             Generate Final Answer
+              Generate Final Answer
 ```
 
 ---
@@ -76,11 +75,11 @@ Instead of sending the entire PDF to the LLM, the system retrieves only the most
 ```text
 Chat-With-PDF/
 │
-├── uploads/              # Temporary uploaded PDFs
-├── .env                  # API Keys (Ignored)
+├── uploads/
+├── .env
 ├── .gitignore
 ├── package.json
-├── index.js              # Main Server
+├── index.js
 └── README.md
 ```
 
@@ -94,22 +93,20 @@ Chat-With-PDF/
 git clone https://github.com/your-username/Chat-With-PDF.git
 ```
 
-### Navigate into the project
-
-```bash
-cd Chat-With-PDF
-```
-
 ### Install dependencies
 
 ```bash
 npm install
 ```
 
-### Create a `.env` file
+### Configure environment variables
+
+Create a `.env` file:
 
 ```env
-GoogleGenAI=YOUR_API_KEY
+GoogleGenAI=YOUR_GEMINI_API_KEY
+QDRANT_URL=YOUR_QDRANT_URL
+QDRANT_API_KEY=YOUR_QDRANT_API_KEY
 ```
 
 ### Start the server
@@ -120,79 +117,65 @@ node index.js
 
 ---
 
-## 📡 API Endpoint
+## 📡 API Endpoints
+
+### Create Qdrant Collection
+
+```http
+GET /create-collection
+```
+
+Creates a vector collection for storing document embeddings.
+
+---
 
 ### Upload PDF & Ask Question
-
-**POST**
 
 ```http
 POST /upload
 ```
 
-### Form Data
+**Form Data**
 
 | Key | Type |
 |------|------|
 | pdf | File |
 | question | Text |
 
-Example:
-
-```
-Question:
-What is Machine Learning?
-```
-
 ---
 
-## 🧠 RAG Architecture
+## 🧠 How It Works
 
-This project follows the Retrieval-Augmented Generation (RAG) workflow:
-
-1. Upload PDF
-2. Extract PDF text
-3. Chunk the document
-4. Generate embeddings for each chunk
-5. Generate embedding for the user's question
-6. Compute cosine similarity
-7. Retrieve the most relevant chunk
-8. Send the retrieved context to Gemini
-9. Return the generated answer
+1. Upload a PDF.
+2. Extract text using `pdf-parse`.
+3. Split the document into overlapping chunks.
+4. Generate embeddings for each chunk.
+5. Store chunk embeddings in Qdrant.
+6. Generate an embedding for the user's question.
+7. Perform semantic vector search in Qdrant.
+8. Retrieve the most relevant chunk.
+9. Send the retrieved context to Gemini.
+10. Return the generated answer.
 
 ---
 
 ## 🚧 Future Improvements
 
-- ✅ Vector Database Integration (FAISS / Pinecone / ChromaDB)
-- ✅ Store embeddings permanently
-- ✅ Retrieve Top-K relevant chunks
-- ✅ Multiple PDF support
-- ✅ Conversation history
-- ✅ Streaming responses
-- ✅ Hybrid Search (Keyword + Vector Search)
-- ✅ Better chunking strategies
-- ✅ Frontend using React or Next.js
-
----
-
-## 📸 Demo
-
-_Add screenshots or a demo GIF here._
-
----
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome!
-
-Feel free to fork this repository and submit a pull request.
+- Store embeddings only once per document
+- Retrieve Top-K relevant chunks instead of one
+- Multi-document support
+- React/Next.js frontend
+- Chat history & conversational memory
+- Hybrid Search (Keyword + Vector Search)
+- Metadata filtering
+- Streaming responses
+- Docker deployment
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+MIT License
 
 ---
 
